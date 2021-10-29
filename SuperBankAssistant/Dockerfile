@@ -1,22 +1,22 @@
 #See https://aka.ms/containerfastmode to understand how Visual Studio uses this Dockerfile to build your images for faster debugging.
+FROM mcr.microsoft.com/dotnet/core/aspnet:3.1-bionic AS base
 
-FROM mcr.microsoft.com/dotnet/aspnet:3.1 AS base
+RUN sed -i 's/MinProtocol = TLSv1.2/MinProtocol = TLSv1/g' /etc/ssl/openssl.cnf
+
+RUN adduser \
+  --disabled-password \
+  --home /app \
+  --gecos '' app \
+  && chown -R app /app
+USER app
+
 WORKDIR /app
-EXPOSE 80
-EXPOSE 443
 
-FROM mcr.microsoft.com/dotnet/sdk:3.1 AS build
-WORKDIR /src
-COPY ["SuperBankAssistant/SuperBankAssistant.csproj", "SuperBankAssistant/"]
-RUN dotnet restore "SuperBankAssistant/SuperBankAssistant.csproj"
-COPY . .
-WORKDIR "/src/SuperBankAssistant"
-RUN dotnet build "SuperBankAssistant.csproj" -c Release -o /app/build
+COPY ./publish .
 
-FROM build AS publish
-RUN dotnet publish "SuperBankAssistant.csproj" -c Release -o /app/publish
-
-FROM base AS final
-WORKDIR /app
-COPY --from=publish /app/publish .
+ENV DOTNET_RUNNING_IN_CONTAINER=true \
+  ASPNETCORE_URLS=http://+:8080
+EXPOSE 8080
 ENTRYPOINT ["dotnet", "SuperBankAssistant.dll"]
+
+
